@@ -1,4 +1,5 @@
 # AI-Detection-in-Agriculture
+Part I. 
 Detecting diseases in agri using superpixel approach
 High-Level Structure
 1. Preprocessing
@@ -20,3 +21,7 @@ Analyze mean values of A/B channels.
 5. Display and Save Results
 Show segmented image.
 Save clustered image to Google Drive.
+
+Part II: 
+Detecting Insects in Grain Facilities
+

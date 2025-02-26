@@ -1,0 +1,152 @@
+### **🔹 Deploying `XceptionFarmInsectClassifier.h5` for Live Insect Detection on Raspberry Pi**  
+Since you want to **use this model for live insect detection at wheat storage facilities**, you need to **deploy it on a Raspberry Pi** with a **camera feed** for real-time predictions. Below is a step-by-step deployment guide.
+
+---
+
+## **🚀 Step-by-Step Deployment Plan**
+### ✅ **1. Convert Model to TFLite (Optimized for Raspberry Pi)**
+Raspberry Pi has **limited computing power**, so you should **convert your `.h5` model to TensorFlow Lite (`.tflite`)** for efficiency.
+
+#### **🔹 Convert to TFLite**
+Run the following code **on your development machine** (not Raspberry Pi):
+```python
+import tensorflow as tf
+
+# ✅ Load the trained model
+model = tf.keras.models.load_model("XceptionFarmInsectClassifier.h5")
+
+# ✅ Convert to TensorFlow Lite format
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+converter.optimizations = [tf.lite.Optimize.DEFAULT]  # Optimize for speed
+tflite_model = converter.convert()
+
+# ✅ Save the converted TFLite model
+with open("XceptionFarmInsectClassifier.tflite", "wb") as f:
+    f.write(tflite_model)
+
+print("✅ Model converted to TFLite and saved as XceptionFarmInsectClassifier.tflite")
+```
+**🔹 Why Convert?**
+- **Reduces model size** (better for Raspberry Pi).
+- **Improves inference speed** (lowers RAM usage).
+
+---
+
+### ✅ **2. Transfer Model to Raspberry Pi**
+Now, **copy the `XceptionFarmInsectClassifier.tflite` model** to your Raspberry Pi.  
+Use **SCP (Secure Copy Protocol)** from your development machine:
+```bash
+scp XceptionFarmInsectClassifier.tflite pi@raspberrypi:/home/pi/
+```
+> Replace `pi@raspberrypi` with your Raspberry Pi’s IP address.
+
+---
+
+### ✅ **3. Install TensorFlow Lite on Raspberry Pi**
+SSH into your Raspberry Pi and install **TensorFlow Lite runtime**:
+```bash
+pip install tflite-runtime
+```
+
+---
+
+### ✅ **4. Connect a Camera to Raspberry Pi**
+Make sure you have a **USB or Raspberry Pi Camera Module** connected.  
+Enable it using:
+```bash
+sudo raspi-config
+```
+Then, go to **Interfacing Options** → **Enable Camera**.
+
+Check if your camera works:
+```bash
+raspistill -o test.jpg
+```
+
+---
+
+### ✅ **5. Run Real-Time Insect Detection**
+Now, **deploy the model** to detect insects **live from the camera feed**.
+
+#### **🔹 Code for Live Insect Detection**
+```python
+import cv2
+import numpy as np
+import tflite_runtime.interpreter as tflite
+from picamera import PiCamera
+from time import sleep
+
+# ✅ Load the TFLite model
+interpreter = tflite.Interpreter(model_path="XceptionFarmInsectClassifier.tflite")
+interpreter.allocate_tensors()
+
+# ✅ Get input & output details
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+# ✅ Start Raspberry Pi camera
+camera = PiCamera()
+camera.resolution = (224, 224)
+camera.framerate = 10
+
+# ✅ Define insect classes (Ensure this matches your dataset)
+class_labels = [
+    "Aphids", "Armyworms", "Corn Borers", "Fall Armyworms", "Tomato Hornworms", 
+    "Western Corn Rootworms", "Honey Bees", "Cabbage Loopers", "Citrus Canker",
+    "Spider Mites", "Thrips", "Fruit Flies", "Potato Beetles", "Corn Earworms",
+    "Brown Stink Bugs"
+]
+
+print("✅ Starting live insect detection...")
+
+# ✅ Process live camera feed
+while True:
+    camera.capture("frame.jpg")
+    image = cv2.imread("frame.jpg")
+    image = cv2.resize(image, (224, 224))  # Resize to model input size
+    image = np.expand_dims(image, axis=0).astype(np.float32) / 255.0  # Normalize
+
+    # ✅ Run inference
+    interpreter.set_tensor(input_details[0]['index'], image)
+    interpreter.invoke()
+    output_data = interpreter.get_tensor(output_details[0]['index'])
+
+    # ✅ Get prediction
+    predicted_label = class_labels[np.argmax(output_data)]
+    confidence = np.max(output_data)
+
+    print(f"🦟 Detected: {predicted_label} (Confidence: {confidence:.2f})")
+
+    # ✅ Show detected insect
+    frame = cv2.imread("frame.jpg")
+    cv2.putText(frame, f"{predicted_label} ({confidence:.2f})", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.imshow("Insect Detection", frame)
+
+    # ✅ Break on 'q' key
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cv2.destroyAllWindows()
+camera.close()
+```
+
+---
+
+### ✅ **6. Improve Model Accuracy with More Data**
+If accuracy needs improvement:
+- **Collect more insect images from wheat storage facilities.**
+- **Retrain the model with these new samples.**
+- **Apply data augmentation (rotations, brightness changes).**
+
+---
+
+### **🎯 Final Deployment Workflow**
+1. **Convert `.h5` to `.tflite`** for Raspberry Pi compatibility.
+2. **Transfer the model** to Raspberry Pi.
+3. **Install TensorFlow Lite** on Raspberry Pi.
+4. **Connect & test the camera.**
+5. **Run real-time insect detection script.**
+6. **Monitor predictions & improve accuracy.**
+
+🔥 **Now, your model can detect insects live at wheat storage facilities!** 🚀🎯
